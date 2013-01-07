@@ -103,6 +103,12 @@ class S3Filesystem(Filesystem):
         To list a directory, path_glob must end with a trailing
         slash (foo and foo/ are different on S3)
         """
+
+        # clean up the  base uri to ensure we have an equal uri to boto (s3://)
+        # just incase we get passed s3n://
+        parsed_glob = parse_s3_uri(path_glob)
+        path_glob = 's3://%s/%s' % parsed_glob
+
         # support globs
         glob_match = GLOB_RE.match(path_glob)
 
