@@ -189,9 +189,6 @@ class HadoopJobRunner(MRJobRunner):
             self._output_dir or
             posixpath.join(self._hdfs_tmp_dir, 'output'))
 
-        self._hadoop_log_dir = hadoop_log_dir(hadoop_home=self._opts['hadoop_home'],
-                                              output_dir=self._output_dir)
-
         # init hadoop version cache
         self._hadoop_version = None
 
@@ -434,7 +431,6 @@ class HadoopJobRunner(MRJobRunner):
         logs. Keyword arguments are checked against their corresponding
         regex groups.
         """
-
         for path in paths:
             m = regexp.match(path)
              # and (job_ids is None or "job_%s_%s" %
@@ -443,11 +439,12 @@ class HadoopJobRunner(MRJobRunner):
                       in job_ids):
                 yield path
 
-    def _ls_logs(self, relative_path):
+    def _ls_logs(self, relative_path, step_num):
         """List logs on the local filesystem by path relative to log root
         directory
         """
-        return self.ls(os.path.join(self._hadoop_log_dir, relative_path))
+        log_dir = hadoop_log_dir(output_dir=self._hdfs_step_output_dir(step_num))
+        return self.ls(os.path.join(log_dir, relative_path))
 
     def _fetch_counters(self, step_num, skip_s3_wait=False):
         """Read Hadoop counters from the job history
@@ -455,13 +452,12 @@ class HadoopJobRunner(MRJobRunner):
         Args:
         step_num -- the step num to fetch counters for
         """
-        job_logs = self._enforce_path_regexp(self._ls_logs('history/'),
+        job_logs = self._enforce_path_regexp(self._ls_logs('history/', step_num),
                                              HADOOP_JOB_LOG_URI_RE,
                                              [self._step_ids[step_num]])
         uris = list(job_logs)
         new_counters = scan_for_counters_in_files(uris, self,
                                                   self.get_hadoop_version())
-
 
         # only include steps relevant to the current job
         hadoop_step_num = int(self._step_ids[step_num].split("_")[-1])
@@ -475,7 +471,7 @@ class HadoopJobRunner(MRJobRunner):
         step_nums = [self._step_ids[step_num]]
 
         try:
-            all_task_attempt_logs.extend(self._ls_logs('userlogs/'))
+            all_task_attempt_logs.extend(self._ls_logs('userlogs/', step_num))
         except IOError:
             # sometimes the master doesn't have these
             pass
@@ -483,10 +479,10 @@ class HadoopJobRunner(MRJobRunner):
         task_attempt_logs = self._enforce_path_regexp(all_task_attempt_logs,
                                                       TASK_ATTEMPTS_LOG_URI_RE,
                                                       step_nums)
-        step_logs = self._enforce_path_regexp(self._ls_logs('steps/'),
+        step_logs = self._enforce_path_regexp(self._ls_logs('steps/', step_num),
                                               STEP_LOG_URI_RE,
                                               step_nums)
-        job_logs = self._enforce_path_regexp(self._ls_logs('history/'),
+        job_logs = self._enforce_path_regexp(self._ls_logs('history/', step_num),
                                              HADOOP_JOB_LOG_URI_RE,
                                              step_nums)
         log.info('Scanning logs for probable cause of failure')
