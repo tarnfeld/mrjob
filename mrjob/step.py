@@ -30,7 +30,7 @@ _HADOOP_OPTS = ('jobconf',)
 # params to specify how to run the step. need at least one of these
 _JOB_STEP_FUNC_PARAMS = _MAPPER_FUNCS + _COMBINER_FUNCS + _REDUCER_FUNCS
 # all allowable step params
-_JOB_STEP_PARAMS = _JOB_STEP_FUNC_PARAMS
+_JOB_STEP_PARAMS = _JOB_STEP_FUNC_PARAMS + _HADOOP_OPTS
 
 
 log = logging.getLogger('mrjob.step')
